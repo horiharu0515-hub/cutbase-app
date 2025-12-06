@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  /* CutBaseのブランドカラー（より深みのある色に調整） */
+  --color-background: #0B1016; /* より暗い濃紺 */
+  --color-surface: #151921;    /* カードのベース色 */
+  --color-primary: #4B9EFF;    /* ネオンブルー */
+  --color-accent: #00E5FF;     /* 輝くシアン */
+  
+  --color-text-main: #F0F4F8;
+  --color-text-muted: #94A3B8;
+  
+  /* アニメーション定義 */
+  --animate-fade-in: fadeIn 0.5s ease-out forwards;
+  --animate-slide-up: slideUp 0.5s ease-out forwards;
+}
+
+@layer utilities {
+  /* すりガラス風のデザインクラス */
+  .glass {
+    background: rgba(21, 25, 33, 0.7); /* 半透明の黒 */
+    backdrop-filter: blur(12px);       /* 背景をぼかす */
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08); /* うっすら白い枠線 */
+  }
+  
+  /* 光るボタンのエフェクト */
+  .glow-button {
+    box-shadow: 0 0 15px rgba(75, 158, 255, 0.3);
+  }
+  .glow-button:hover {
+    box-shadow: 0 0 25px rgba(75, 158, 255, 0.5);
+  }
+}
+
+/* 全体の基本設定 */
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-main);
+  /* 背景にうっすら「光」を置く */
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(75, 158, 255, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(0, 229, 255, 0.05) 0%, transparent 40%);
+  background-attachment: fixed; /* スクロールしても背景を固定 */
+  font-family: sans-serif;
+}
+
+/* スクロールバーのカスタマイズ */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2D3748;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* アニメーションのキーフレーム */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
