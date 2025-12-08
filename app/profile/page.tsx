@@ -33,7 +33,6 @@ export default function ProfilePage() {
   }, []);
 
   const getProfile = async () => {
-    // 1. 現在のログインユーザーを取得
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         router.push('/login');
@@ -41,7 +40,6 @@ export default function ProfilePage() {
     }
     setCurrentUser(user);
 
-    // 2. プロフィール情報を取得
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -51,20 +49,13 @@ export default function ProfilePage() {
     if (data) {
       setProfile(data);
     } else {
-        // データがない場合は作る（念のため）
         const newProfile = { id: user.id, name: 'Guest', bio: '' };
         await supabase.from('profiles').insert([newProfile]);
         setProfile(newProfile as any);
     }
-    
-    // 3. 統計データを取得（仮実装：本来はcountクエリを使用）
-    // const { count: followers } = await supabase.from('follows').select('*', { count: 'exact' }).eq('following_id', user.id);
-    // setStats({ ...stats, followers: followers || 0 });
-    
     setLoading(false);
   };
 
-  // 画像アップロード処理
   const uploadImage = async (event: any, type: 'avatar' | 'header') => {
     if (!event.target.files || event.target.files.length === 0) return;
     const file = event.target.files[0];
@@ -72,23 +63,20 @@ export default function ProfilePage() {
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${type}s/${currentUser.id}/${fileName}`;
 
-    // Storageにアップロード
     const { error: uploadError } = await supabase.storage
       .from('images')
       .upload(filePath, file);
 
     if (uploadError) {
-      alert("アップロード失敗: Storageバケット設定を確認してください");
+      alert("アップロード失敗: 画像サイズが大きいか、通信エラーです");
       console.error(uploadError);
       return;
     }
 
-    // 公開URLを取得
     const { data: { publicUrl } } = supabase.storage
       .from('images')
       .getPublicUrl(filePath);
 
-    // 画面とDBを更新
     const updateData = type === 'avatar' ? { avatar_url: publicUrl } : { header_url: publicUrl };
     setProfile({ ...profile, ...updateData });
     await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
@@ -148,6 +136,15 @@ export default function ProfilePage() {
       {/* メインエリア */}
       <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24">
         
+        <div className="md:hidden flex items-center justify-center mb-6">
+           <Link href="/" className="flex items-center gap-2">
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2 rounded-lg">
+                  <Scissors size={18} className="text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-white">CutBase</h1>
+           </Link>
+        </div>
+        
         {/* プロフィールヘッダー */}
         <div className="glass rounded-2xl border border-white/10 relative overflow-hidden mb-8 shadow-2xl animate-fade-in group">
             
@@ -156,8 +153,8 @@ export default function ProfilePage() {
                 className="absolute top-0 left-0 w-full h-40 bg-gradient-to-r from-blue-900 to-slate-900 bg-cover bg-center"
                 style={{ backgroundImage: `url(${profile.header_url})` }}
             >
-                {/* ヘッダー編集ボタン（ホバー時のみ） */}
-                <label className="absolute right-4 bottom-4 bg-black/50 text-white p-2 rounded-full cursor-pointer hover:bg-black/70 transition opacity-0 group-hover:opacity-100">
+                {/* ヘッダー編集ボタン（常時表示、半透明） */}
+                <label className="absolute right-4 bottom-4 bg-black/40 backdrop-blur-sm text-white p-2 rounded-full cursor-pointer hover:bg-black/70 transition border border-white/10">
                     <Camera size={20} />
                     <input type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, 'header')} />
                 </label>
@@ -197,6 +194,8 @@ export default function ProfilePage() {
                                     <option>After Effects</option>
                                     <option>DaVinci Resolve</option>
                                     <option>Final Cut Pro</option>
+                                    {/* その他を追加 */}
+                                    <option value="Other">その他</option>
                                 </select>
                                 <select className="bg-black/30 border border-white/20 rounded p-2 text-sm"
                                     value={profile.level} onChange={(e) => setProfile({...profile, level: e.target.value})}>
@@ -212,7 +211,7 @@ export default function ProfilePage() {
                         <div>
                             <h2 className="text-3xl font-bold text-white mb-2">{profile.name}</h2>
                             <div className="flex flex-wrap gap-2 mb-4">
-                                <span className="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold border border-primary/20">{profile.soft}</span>
+                                <span className="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold border border-primary/20">{profile.soft === 'Other' ? 'その他' : profile.soft}</span>
                                 <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/20">{profile.level}</span>
                             </div>
                             <p className="text-gray-300 max-w-xl leading-relaxed">{profile.bio || "自己紹介未設定"}</p>
@@ -253,7 +252,6 @@ export default function ProfilePage() {
         </div>
       </main>
 
-      {/* スマホボトムナビ */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-background/90 backdrop-blur-xl border-t border-white/10 flex justify-around p-4 z-50 pb-safe">
           <Link href="/"><Home size={24} className="text-gray-400" /></Link>
           <Link href="/match"><MessageSquare size={24} className="text-gray-400" /></Link>

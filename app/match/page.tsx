@@ -7,9 +7,9 @@ import { supabase } from "../../lib/supabase";
 
 export default function MatchPage() {
   const [jobs, setJobs] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false); // 募集フォーム用
-  const [selectedJob, setSelectedJob] = useState<any>(null); // 詳細表示用
-  const [isApplied, setIsApplied] = useState(false); // 応募完了フラグ
+  const [showForm, setShowForm] = useState(false); 
+  const [selectedJob, setSelectedJob] = useState<any>(null); 
+  const [isApplied, setIsApplied] = useState(false); 
 
   const [newJob, setNewJob] = useState({
     title: "",
@@ -56,20 +56,19 @@ export default function MatchPage() {
     }
   };
 
-  // 応募ボタンを押した時の処理
   const handleApply = () => {
     setIsApplied(true);
     setTimeout(() => {
       alert("応募が完了しました！\nクライアントに通知が送信されました。");
-      setSelectedJob(null); // 詳細を閉じる
-      setIsApplied(false); // フラグを戻す
+      setSelectedJob(null); 
+      setIsApplied(false); 
     }, 1000);
   };
 
   return (
     <div className="flex min-h-screen bg-background text-text-main font-sans">
       
-      {/* 左サイドバー (PC) */}
+      {/* 左サイドバー */}
       <aside className="w-64 border-r border-white/5 p-6 hidden md:flex flex-col fixed h-full bg-background/50 backdrop-blur-xl z-10 top-0 left-0">
         <Link href="/">
           <div className="mb-10 flex items-center gap-3 select-none group cursor-pointer">
@@ -105,7 +104,6 @@ export default function MatchPage() {
       {/* メインエリア */}
       <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-4xl mx-auto w-full relative pb-24">
 
-        {/* スマホ用ヘッダー */}
         <div className="md:hidden flex items-center justify-center mb-6">
            <Link href="/" className="flex items-center gap-2">
               <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2 rounded-lg">
@@ -115,7 +113,7 @@ export default function MatchPage() {
            </Link>
         </div>
         
-        {/* --- モーダル: 募集フォーム --- */}
+        {/* モーダル: 募集フォーム */}
         {showForm && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-surface p-6 rounded-xl w-full max-w-md border border-white/10 shadow-2xl glass animate-fade-in">
@@ -139,6 +137,8 @@ export default function MatchPage() {
                     <option>After Effects</option>
                     <option>DaVinci Resolve</option>
                     <option>Final Cut Pro</option>
+                    {/* その他を追加 */}
+                    <option value="Other">その他</option>
                   </select>
                   <input 
                     type="text" placeholder="予算（例：1万円）" 
@@ -165,13 +165,11 @@ export default function MatchPage() {
           </div>
         )}
 
-        {/* --- モーダル: 詳細表示 & 応募 --- */}
+        {/* モーダル: 詳細表示 & 応募 */}
         {selectedJob && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
-            {/* スマホでは下から、PCでは中央に表示 */}
             <div className="bg-[#151921] w-full max-w-lg md:rounded-2xl rounded-t-2xl border-t md:border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               
-              {/* ヘッダー画像エリア */}
               <div className="h-32 bg-gradient-to-r from-blue-900 to-slate-900 relative flex-shrink-0">
                   <button 
                     onClick={() => setSelectedJob(null)} 
@@ -186,10 +184,9 @@ export default function MatchPage() {
                   </div>
               </div>
 
-              {/* 中身 */}
               <div className="p-6 pt-10 overflow-y-auto flex-1">
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded border border-primary/20">
-                      {selectedJob.soft}
+                      {selectedJob.soft === 'Other' ? 'その他' : selectedJob.soft}
                   </span>
                   <h2 className="text-2xl font-bold text-white mt-2 mb-1">{selectedJob.title}</h2>
                   <p className="text-sm text-gray-400 mb-6">Client: {selectedJob.client}</p>
@@ -219,7 +216,6 @@ export default function MatchPage() {
                   </div>
               </div>
 
-              {/* フッターアクション */}
               <div className="p-4 border-t border-white/10 bg-black/20 flex-shrink-0">
                   <button 
                     onClick={handleApply}
@@ -247,7 +243,6 @@ export default function MatchPage() {
                 <h2 className="text-2xl font-bold text-white mb-2">Matching</h2>
                 <p className="text-gray-400 text-sm">編集案件やコラボ相手を探そう</p>
             </div>
-            {/* スマホ用募集ボタン */}
             <button 
               onClick={() => setShowForm(true)}
               className="md:hidden bg-primary hover:bg-accent text-white text-sm font-bold py-2 px-4 rounded-lg flex items-center gap-2"
@@ -279,7 +274,7 @@ export default function MatchPage() {
                             </div>
                         </div>
                         <span className="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold border border-primary/20">
-                            {job.soft}
+                            {job.soft === 'Other' ? 'その他' : job.soft}
                         </span>
                     </div>
 
@@ -306,7 +301,6 @@ export default function MatchPage() {
 
       </main>
 
-      {/* 📱 スマホ用ボトムナビ */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-background/90 backdrop-blur-xl border-t border-white/10 flex justify-around p-4 z-50 pb-safe">
           <Link href="/" className="flex flex-col items-center gap-1 text-gray-400 hover:text-white">
             <Home size={24} />
