@@ -9,22 +9,28 @@ export default function CutBaseHome() {
   const [inputText, setInputText] = useState("");
   const [selectedSoft, setSelectedSoft] = useState("Premiere Pro");
   const [posts, setPosts] = useState<any[]>([]);
-  const [filterTag, setFilterTag] = useState<string | null>(null); // タグフィルター用
-  const inputRef = useRef<HTMLInputElement>(null); // 入力欄へのスクロール用
+  const [filterTag, setFilterTag] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPosts();
-  }, [filterTag]); // フィルターが変わったら再読み込み
+  }, [filterTag]);
 
   const fetchPosts = async () => {
+    // ここがポイント！投稿と一緒に「profiles（書いた人の情報）」も取得します
     let query = supabase
       .from('posts')
-      .select('*')
+      .select(`
+        *,
+        profiles (
+          name,
+          avatar_url
+        )
+      `)
       .order('created_at', { ascending: false });
 
-    // タグで絞り込み
     if (filterTag) {
-      query = query.ilike('tag', `%${filterTag}%`); // 部分一致検索
+      query = query.ilike('tag', `%${filterTag}%`);
     }
 
     const { data, error } = await query;
@@ -36,19 +42,33 @@ export default function CutBaseHome() {
   const handlePost = async () => {
     if (inputText.trim() === "") return;
 
+    // 1. まずログインユーザーを取得
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        alert("投稿するにはログインが必要です");
+        return;
+    }
+
+    // 2. user_id をつけて保存
     const { error } = await supabase
       .from('posts')
-      .insert([{ content: inputText, tag: selectedSoft, likes: 0 }]);
+      .insert([{ 
+        content: inputText, 
+        tag: selectedSoft, 
+        likes: 0,
+        user_id: user.id // これで紐付け完了！
+      }]);
 
     if (error) {
       alert("投稿に失敗しました...");
+      console.error(error);
     } else {
       setInputText(""); 
       fetchPosts(); 
     }
   };
 
-  // 左下のボタンを押した時の動作（入力欄へフォーカス）
   const handleFocusInput = () => {
     inputRef.current?.focus();
     inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -57,7 +77,7 @@ export default function CutBaseHome() {
   return (
     <div className="flex min-h-screen bg-background text-text-main font-sans">
       
-      {/* 左サイドバー（PC用） */}
+      {/* 左サイドバー (PC) */}
       <aside className="w-64 border-r border-white/5 p-6 hidden md:flex flex-col fixed h-full bg-background/50 backdrop-blur-xl z-10 top-0 left-0">
         <Link href="/">
           <div className="mb-10 flex items-center gap-3 select-none group cursor-pointer">
@@ -91,10 +111,9 @@ export default function CutBaseHome() {
       </aside>
 
       {/* メインエリア */}
-      {/* スマホ対応: サイドバー分のマージンを解除、下部に余白を追加 */}
       <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-2xl mx-auto w-full pb-24">
         
-        {/* スマホ用ヘッダーロゴ */}
+        {/* スマホヘッダー */}
         <div className="md:hidden flex items-center justify-center mb-6">
            <Link href="/" className="flex items-center gap-2">
               <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2 rounded-lg">
@@ -104,7 +123,6 @@ export default function CutBaseHome() {
            </Link>
         </div>
 
-        {/* フィルター中の表示 */}
         {filterTag && (
           <div className="flex justify-between items-center mb-4 bg-primary/10 p-3 rounded-lg border border-primary/20">
             <span className="text-primary font-bold flex items-center gap-2"><Hash size={16}/> {filterTag}</span>
@@ -164,7 +182,10 @@ export default function CutBaseHome() {
               <PostCard 
                 key={post.id} 
                 postId={post.id} 
-                user="Guest User"
+                // ここでプロフィール情報を渡します
+                // データがない場合（昔の投稿など）はGuest扱いにする
+                user={post.profiles?.name || "Guest User"}
+                avatarUrl={post.profiles?.avatar_url}
                 time={new Date(post.created_at).toLocaleString()}
                 tag={post.tag} 
                 content={post.content}
@@ -174,7 +195,7 @@ export default function CutBaseHome() {
         </div>
       </main>
 
-      {/* 右サイドバー（PC用・ハッシュタグフィルター） */}
+      {/* 右サイドバー (PC) */}
       <aside className="w-80 fixed right-0 top-0 h-full border-l border-white/5 p-6 hidden xl:block bg-background/50 backdrop-blur-md">
         <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider text-gray-500">Trending Tags</h3>
         <div className="flex flex-wrap gap-2 mb-8">
@@ -190,7 +211,7 @@ export default function CutBaseHome() {
         </div>
       </aside>
 
-      {/* 📱 スマホ用ボトムナビゲーション */}
+      {/* 📱 スマホ用ボトムナビ */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-background/90 backdrop-blur-xl border-t border-white/10 flex justify-around p-4 z-50 pb-safe">
           <Link href="/" className="flex flex-col items-center gap-1 text-primary">
             <Home size={24} />
@@ -219,15 +240,14 @@ function NavItem({ icon, label, active = false }: { icon: any, label: string, ac
   );
 }
 
-// 投稿カード
-function PostCard({ postId, user, time, tag, content, initialLikes }: any) {
+// 投稿カード（プロフィール表示対応版）
+function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }: any) {
   const [likes, setLikes] = useState(initialLikes);
   const [isLiked, setIsLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState("");
 
-  // 初期ロード時に「自分がいいねしたか」チェック
   useEffect(() => {
     const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
     if (likedPosts.includes(postId)) {
@@ -235,29 +255,20 @@ function PostCard({ postId, user, time, tag, content, initialLikes }: any) {
     }
   }, [postId]);
 
-  // いいね機能（1人1回制限）
   const handleLike = async () => {
-    // ローカルストレージでチェック
     const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
     if (likedPosts.includes(postId)) {
       alert("すでにいいねしています！");
       return;
     }
-
-    // いいね追加
     const newLikes = likes + 1;
     setLikes(newLikes);
     setIsLiked(true);
-
-    // ストレージに保存
     likedPosts.push(postId);
     localStorage.setItem('liked_posts', JSON.stringify(likedPosts));
-
-    // DB更新
     await supabase.from('posts').update({ likes: newLikes }).eq('id', postId);
   };
 
-  // 共有機能
   const handleShare = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url).then(() => {
@@ -276,7 +287,22 @@ function PostCard({ postId, user, time, tag, content, initialLikes }: any) {
 
   const handleSendComment = async () => {
     if (!commentText.trim()) return;
-    const { error } = await supabase.from('comments').insert([{ post_id: postId, content: commentText, user_name: "Guest User" }]);
+    
+    // コメントもログインユーザー名を反映させるため、ユーザー情報を取得
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    let userName = "Guest User";
+    
+    if (currentUser) {
+       const { data: profile } = await supabase.from('profiles').select('name').eq('id', currentUser.id).single();
+       if (profile) userName = profile.name;
+    }
+
+    const { error } = await supabase.from('comments').insert([{ 
+        post_id: postId, 
+        content: commentText, 
+        user_name: userName 
+    }]);
+
     if (!error) {
       setCommentText("");
       fetchComments();
@@ -297,7 +323,13 @@ function PostCard({ postId, user, time, tag, content, initialLikes }: any) {
     <article className="glass rounded-xl p-5 mb-4 hover:border-primary/30 transition-all cursor-pointer group shadow-lg animate-fade-in">
         <div className="flex justify-between items-start mb-3">
             <div className="flex gap-3 items-center">
-                <div className="w-10 h-10 rounded-full bg-gray-700 border border-white/10 flex items-center justify-center text-xs text-white/50">User</div>
+                {/* アイコン表示部分：画像があれば表示、なければデフォルト */}
+                <div 
+                    className="w-10 h-10 rounded-full bg-gray-700 border border-white/10 flex items-center justify-center text-xs text-white/50 overflow-hidden bg-cover bg-center"
+                    style={{ backgroundImage: avatarUrl ? `url(${avatarUrl})` : 'none' }}
+                >
+                    {!avatarUrl && user.charAt(0)}
+                </div>
                 <div>
                     <h3 className="font-bold text-sm text-white">{user}</h3>
                     <p className="text-xs text-gray-500">{time}</p>
@@ -324,7 +356,6 @@ function PostCard({ postId, user, time, tag, content, initialLikes }: any) {
               <MessageSquare size={18} /> {showComments ? '閉じる' : 'コメント'}
             </button>
             
-            {/* 共有ボタン有効化 */}
             <button onClick={handleShare} className="flex items-center gap-1.5 hover:text-white transition">
               <Share2 size={18} />
             </button>
@@ -332,7 +363,6 @@ function PostCard({ postId, user, time, tag, content, initialLikes }: any) {
 
         {showComments && (
           <div className="mt-4 pt-4 border-t border-white/10 animate-slide-up relative">
-            {/* 閉じるボタン */}
             <button onClick={() => setShowComments(false)} className="absolute top-2 right-0 text-xs text-gray-500 hover:text-white">
                ✕ 閉じる
             </button>
