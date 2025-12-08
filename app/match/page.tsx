@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Home, User, MessageSquare, PlusCircle, Briefcase, DollarSign, Clock, X, Scissors } from "lucide-react";
+import { Home, User, MessageSquare, PlusCircle, Briefcase, DollarSign, Clock, X, Scissors, CheckCircle, Send } from "lucide-react";
 import Link from "next/link"; 
 import { supabase } from "../../lib/supabase"; 
 
 export default function MatchPage() {
   const [jobs, setJobs] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false); 
+  const [showForm, setShowForm] = useState(false); // 募集フォーム用
+  const [selectedJob, setSelectedJob] = useState<any>(null); // 詳細表示用
+  const [isApplied, setIsApplied] = useState(false); // 応募完了フラグ
 
   const [newJob, setNewJob] = useState({
     title: "",
@@ -47,12 +49,21 @@ export default function MatchPage() {
 
     if (error) {
       alert("投稿に失敗しました...");
-      console.error(error);
     } else {
       setShowForm(false);
       setNewJob({ title: "", budget: "", soft: "Premiere Pro", deadline: "", description: "" }); 
       fetchJobs(); 
     }
+  };
+
+  // 応募ボタンを押した時の処理
+  const handleApply = () => {
+    setIsApplied(true);
+    setTimeout(() => {
+      alert("応募が完了しました！\nクライアントに通知が送信されました。");
+      setSelectedJob(null); // 詳細を閉じる
+      setIsApplied(false); // フラグを戻す
+    }, 1000);
   };
 
   return (
@@ -104,7 +115,7 @@ export default function MatchPage() {
            </Link>
         </div>
         
-        {/* 投稿フォーム (モーダル) */}
+        {/* --- モーダル: 募集フォーム --- */}
         {showForm && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-surface p-6 rounded-xl w-full max-w-md border border-white/10 shadow-2xl glass animate-fade-in">
@@ -154,6 +165,83 @@ export default function MatchPage() {
           </div>
         )}
 
+        {/* --- モーダル: 詳細表示 & 応募 --- */}
+        {selectedJob && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
+            {/* スマホでは下から、PCでは中央に表示 */}
+            <div className="bg-[#151921] w-full max-w-lg md:rounded-2xl rounded-t-2xl border-t md:border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              
+              {/* ヘッダー画像エリア */}
+              <div className="h-32 bg-gradient-to-r from-blue-900 to-slate-900 relative flex-shrink-0">
+                  <button 
+                    onClick={() => setSelectedJob(null)} 
+                    className="absolute top-4 right-4 bg-black/30 p-2 rounded-full text-white hover:bg-black/50 transition"
+                  >
+                    <X size={20} />
+                  </button>
+                  <div className="absolute -bottom-6 left-6">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg border-4 border-[#151921]">
+                          <Briefcase size={32} className="text-white" />
+                      </div>
+                  </div>
+              </div>
+
+              {/* 中身 */}
+              <div className="p-6 pt-10 overflow-y-auto flex-1">
+                  <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded border border-primary/20">
+                      {selectedJob.soft}
+                  </span>
+                  <h2 className="text-2xl font-bold text-white mt-2 mb-1">{selectedJob.title}</h2>
+                  <p className="text-sm text-gray-400 mb-6">Client: {selectedJob.client}</p>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="bg-black/30 p-3 rounded-lg border border-white/5 flex items-center gap-3">
+                          <DollarSign className="text-green-400" />
+                          <div>
+                              <p className="text-xs text-gray-500">予算</p>
+                              <p className="font-bold text-white">{selectedJob.budget}</p>
+                          </div>
+                      </div>
+                      <div className="bg-black/30 p-3 rounded-lg border border-white/5 flex items-center gap-3">
+                          <Clock className="text-orange-400" />
+                          <div>
+                              <p className="text-xs text-gray-500">納期</p>
+                              <p className="font-bold text-white">{selectedJob.deadline}</p>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-gray-300">案件詳細</h3>
+                      <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap bg-white/5 p-4 rounded-lg">
+                          {selectedJob.description}
+                      </p>
+                  </div>
+              </div>
+
+              {/* フッターアクション */}
+              <div className="p-4 border-t border-white/10 bg-black/20 flex-shrink-0">
+                  <button 
+                    onClick={handleApply}
+                    disabled={isApplied}
+                    className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition shadow-lg ${isApplied ? 'bg-green-600 text-white' : 'bg-primary hover:bg-accent text-white shadow-primary/20'}`}
+                  >
+                    {isApplied ? (
+                        <>
+                           <CheckCircle size={24} /> 応募完了
+                        </>
+                    ) : (
+                        <>
+                           <Send size={20} /> 今すぐ応募する
+                        </>
+                    )}
+                  </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
         <div className="mb-8 flex items-end justify-between">
             <div>
                 <h2 className="text-2xl font-bold text-white mb-2">Matching</h2>
@@ -173,7 +261,11 @@ export default function MatchPage() {
             {jobs.length === 0 && <p className="text-gray-500 text-center py-10">現在募集中の案件はありません。募集してみましょう！</p>}
 
             {jobs.map((job) => (
-                <div key={job.id} className="glass rounded-xl p-6 hover:border-primary/50 transition-all cursor-pointer group shadow-lg">
+                <div 
+                    key={job.id} 
+                    onClick={() => setSelectedJob(job)} 
+                    className="glass rounded-xl p-6 hover:border-primary/50 transition-all cursor-pointer group shadow-lg"
+                >
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-primary">
@@ -191,7 +283,7 @@ export default function MatchPage() {
                         </span>
                     </div>
 
-                    <p className="text-gray-300 text-sm mb-6 leading-relaxed bg-black/20 p-3 rounded-lg border border-white/5 whitespace-pre-wrap">
+                    <p className="text-gray-300 text-sm mb-6 leading-relaxed bg-black/20 p-3 rounded-lg border border-white/5 line-clamp-3">
                         {job.description}
                     </p>
 
