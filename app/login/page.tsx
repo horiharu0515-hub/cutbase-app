@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
-import { Scissors, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { Scissors, Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isSignUp, setIsSignUp] = useState(false); // 登録モードかログインモードか
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // パスワード表示切替
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -28,14 +29,19 @@ export default function LoginPage() {
         });
         if (error) throw error;
         
-        // プロフィール情報の初期作成（My Profileテーブルへ）
+        // プロフィール情報の初期作成（auth.usersのIDと紐付け）
         if (data.user) {
-            await supabase.from('my_profile').insert([
-                { name: 'New User', bio: 'よろしくお願いします！', id: 0 } // idは後で調整
+            const { error: profileError } = await supabase.from('profiles').insert([
+                { 
+                  id: data.user.id, // ここで紐付け！
+                  name: 'New User', 
+                  bio: 'よろしくお願いします！' 
+                }
             ]);
+            if (profileError) console.error("プロフィール作成エラー", profileError);
         }
-        setMessage("登録完了！ログインしました。");
-        router.push("/"); // トップへ移動
+        setMessage("登録完了！自動的にログインします...");
+        router.push("/");
       } else {
         // ログイン
         const { error } = await supabase.auth.signInWithPassword({
@@ -45,7 +51,7 @@ export default function LoginPage() {
         if (error) throw error;
         
         setMessage("ログイン成功！");
-        router.push("/"); // トップへ移動
+        router.push("/");
       }
     } catch (error: any) {
       setMessage("エラー: " + error.message);
@@ -57,7 +63,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background text-text-main font-sans flex flex-col items-center justify-center p-4 relative overflow-hidden">
       
-      {/* 背景の装飾 */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
           <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px]"></div>
           <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px]"></div>
@@ -98,14 +103,22 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} // ここで切り替え
                 required
                 minLength={6}
-                className="w-full bg-black/30 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-primary outline-none transition"
+                className="w-full bg-black/30 border border-white/10 rounded-xl py-3 pl-10 pr-12 text-white focus:border-primary outline-none transition"
                 placeholder="6文字以上"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              {/* パスワード表示ボタン */}
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-gray-500 hover:text-white transition"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
@@ -141,10 +154,6 @@ export default function LoginPage() {
           </button>
         </div>
       </div>
-      
-      <Link href="/" className="mt-8 text-gray-500 hover:text-white text-sm transition">
-        トップページに戻る
-      </Link>
     </div>
   );
 }
