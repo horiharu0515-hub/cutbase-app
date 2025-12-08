@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// Scissors（ハサミ）アイコンを追加しました
-import { Home, User, MessageSquare, PlusCircle, Edit3, MapPin, Link as LinkIcon, Save, X, Film, Scissors } from "lucide-react";
+import { Home, User, MessageSquare, PlusCircle, Edit3, Save, X, Film, Scissors } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "../../lib/supabase";
 
@@ -79,18 +78,18 @@ export default function ProfilePage() {
   return (
     <div className="flex min-h-screen bg-background text-text-main font-sans">
       
-      {/* 左サイドバー（デザイン更新） */}
-      <aside className="w-64 border-r border-white/5 p-6 hidden md:flex flex-col fixed h-full bg-background/50 backdrop-blur-xl z-10">
-        
-        {/* ✨ 新しいブランドロゴ ✨ */}
-        <div className="mb-10 flex items-center gap-3 select-none group cursor-pointer">
-            <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2.5 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
-                <Scissors size={22} className="text-white" />
-            </div>
-            <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                CutBase
-            </h1>
-        </div>
+      {/* 左サイドバー (PC) */}
+      <aside className="w-64 border-r border-white/5 p-6 hidden md:flex flex-col fixed h-full bg-background/50 backdrop-blur-xl z-10 top-0 left-0">
+        <Link href="/">
+          <div className="mb-10 flex items-center gap-3 select-none group cursor-pointer">
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2.5 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
+                  <Scissors size={22} className="text-white" />
+              </div>
+              <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                  CutBase
+              </h1>
+          </div>
+        </Link>
 
         <nav className="space-y-4 flex-1">
           <Link href="/">
@@ -103,17 +102,30 @@ export default function ProfilePage() {
              <NavItem icon={<User size={20} />} label="Profile" active />
           </Link>
         </nav>
-        <button className="w-full bg-primary hover:bg-accent text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20 glow-button">
-          <PlusCircle size={20} />
-          <span>投稿する</span>
-        </button>
+        {/* プロフィールページでは「投稿する」ボタンは不要、またはFeedへ遷移でもOK */}
+        <Link href="/">
+            <button className="w-full bg-primary hover:bg-accent text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20 glow-button">
+            <PlusCircle size={20} />
+            <span>投稿する</span>
+            </button>
+        </Link>
       </aside>
 
       {/* メインエリア */}
-      <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-4xl mx-auto w-full">
+      <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24">
+
+        {/* スマホ用ヘッダー */}
+        <div className="md:hidden flex items-center justify-center mb-6">
+           <Link href="/" className="flex items-center gap-2">
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2 rounded-lg">
+                  <Scissors size={18} className="text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-white">CutBase</h1>
+           </Link>
+        </div>
         
-        {/* プロフィールヘッダー（すりガラス化） */}
-        <div className="glass rounded-2xl p-8 border border-white/10 relative overflow-hidden mb-8 shadow-2xl">
+        {/* プロフィールヘッダー */}
+        <div className="glass rounded-2xl p-8 border border-white/10 relative overflow-hidden mb-8 shadow-2xl animate-fade-in">
             <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-900 to-slate-900 opacity-50"></div>
             
             <div className="relative pt-10 flex flex-col md:flex-row items-end md:items-center gap-6">
@@ -190,7 +202,7 @@ export default function ProfilePage() {
             </div>
         </div>
 
-        {/* 統計データ（すりガラス化） */}
+        {/* 統計データ */}
         <div className="grid grid-cols-3 gap-4 mb-8">
             <StatCard label="Posts" value="12" />
             <StatCard label="Followers" value="2,405" />
@@ -213,6 +225,23 @@ export default function ProfilePage() {
         </div>
 
       </main>
+
+      {/* 📱 スマホ用ボトムナビ */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-background/90 backdrop-blur-xl border-t border-white/10 flex justify-around p-4 z-50 pb-safe">
+          <Link href="/" className="flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+            <Home size={24} />
+            <span className="text-[10px] font-bold">Feed</span>
+          </Link>
+          <Link href="/match" className="flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+            <MessageSquare size={24} />
+            <span className="text-[10px] font-bold">Match</span>
+          </Link>
+          <Link href="/profile" className="flex flex-col items-center gap-1 text-primary">
+            <User size={24} />
+            <span className="text-[10px] font-bold">Profile</span>
+          </Link>
+      </nav>
+
     </div>
   );
 }

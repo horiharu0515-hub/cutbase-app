@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// Scissors（ハサミ）アイコンを追加しました
 import { Home, User, MessageSquare, PlusCircle, Briefcase, DollarSign, Clock, X, Scissors } from "lucide-react";
 import Link from "next/link"; 
 import { supabase } from "../../lib/supabase"; 
@@ -59,18 +58,18 @@ export default function MatchPage() {
   return (
     <div className="flex min-h-screen bg-background text-text-main font-sans">
       
-      {/* 左サイドバー（デザイン更新） */}
-      <aside className="w-64 border-r border-white/5 p-6 hidden md:flex flex-col fixed h-full bg-background/50 backdrop-blur-xl z-10">
-        
-        {/* ✨ 新しいブランドロゴ ✨ */}
-        <div className="mb-10 flex items-center gap-3 select-none group cursor-pointer">
-            <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2.5 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
-                <Scissors size={22} className="text-white" />
-            </div>
-            <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                CutBase
-            </h1>
-        </div>
+      {/* 左サイドバー (PC) */}
+      <aside className="w-64 border-r border-white/5 p-6 hidden md:flex flex-col fixed h-full bg-background/50 backdrop-blur-xl z-10 top-0 left-0">
+        <Link href="/">
+          <div className="mb-10 flex items-center gap-3 select-none group cursor-pointer">
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2.5 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
+                  <Scissors size={22} className="text-white" />
+              </div>
+              <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                  CutBase
+              </h1>
+          </div>
+        </Link>
 
         <nav className="space-y-4 flex-1">
           <Link href="/">
@@ -93,12 +92,22 @@ export default function MatchPage() {
       </aside>
 
       {/* メインエリア */}
-      <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-4xl mx-auto w-full relative">
+      <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-4xl mx-auto w-full relative pb-24">
+
+        {/* スマホ用ヘッダー */}
+        <div className="md:hidden flex items-center justify-center mb-6">
+           <Link href="/" className="flex items-center gap-2">
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2 rounded-lg">
+                  <Scissors size={18} className="text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-white">CutBase</h1>
+           </Link>
+        </div>
         
-        {/* 投稿フォーム */}
+        {/* 投稿フォーム (モーダル) */}
         {showForm && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-surface p-6 rounded-xl w-full max-w-md border border-white/10 shadow-2xl glass">
+            <div className="bg-surface p-6 rounded-xl w-full max-w-md border border-white/10 shadow-2xl glass animate-fade-in">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-white">案件を募集する</h3>
                 <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-white"><X size={24} /></button>
@@ -150,6 +159,13 @@ export default function MatchPage() {
                 <h2 className="text-2xl font-bold text-white mb-2">Matching</h2>
                 <p className="text-gray-400 text-sm">編集案件やコラボ相手を探そう</p>
             </div>
+            {/* スマホ用募集ボタン */}
+            <button 
+              onClick={() => setShowForm(true)}
+              className="md:hidden bg-primary hover:bg-accent text-white text-sm font-bold py-2 px-4 rounded-lg flex items-center gap-2"
+            >
+              <PlusCircle size={16} /> 募集
+            </button>
         </div>
 
         {/* 案件リスト */}
@@ -197,6 +213,23 @@ export default function MatchPage() {
         </div>
 
       </main>
+
+      {/* 📱 スマホ用ボトムナビ */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-background/90 backdrop-blur-xl border-t border-white/10 flex justify-around p-4 z-50 pb-safe">
+          <Link href="/" className="flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+            <Home size={24} />
+            <span className="text-[10px] font-bold">Feed</span>
+          </Link>
+          <Link href="/match" className="flex flex-col items-center gap-1 text-primary">
+            <MessageSquare size={24} />
+            <span className="text-[10px] font-bold">Match</span>
+          </Link>
+          <Link href="/profile" className="flex flex-col items-center gap-1 text-gray-400 hover:text-white">
+            <User size={24} />
+            <span className="text-[10px] font-bold">Profile</span>
+          </Link>
+      </nav>
+
     </div>
   );
 }
