@@ -10,14 +10,18 @@ export default function CutBaseHome() {
   const [selectedSoft, setSelectedSoft] = useState("Premiere Pro");
   const [posts, setPosts] = useState<any[]>([]);
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState(""); // 検索ワード用
+  const [isSearching, setIsSearching] = useState(false); // 検索実行中フラグ
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPosts();
-  }, [filterTag]);
+  }, [filterTag]); // タグ変更時は自動リロード
 
-  const fetchPosts = async () => {
-    // ここがポイント！投稿と一緒に「profiles（書いた人の情報）」も取得します
+  const fetchPosts = async (manualSearchTerm?: string) => {
+    // 検索ワード: 引数で指定があればそれ、なければStateを使う
+    const term = manualSearchTerm !== undefined ? manualSearchTerm : searchQuery;
+
     let query = supabase
       .from('posts')
       .select(`
@@ -29,8 +33,14 @@ export default function CutBaseHome() {
       `)
       .order('created_at', { ascending: false });
 
+    // タグで絞り込み
     if (filterTag) {
       query = query.ilike('tag', `%${filterTag}%`);
+    }
+
+    // ★検索ワードで絞り込み（本文を検索）
+    if (term) {
+      query = query.ilike('content', `%${term}%`);
     }
 
     const { data, error } = await query;
@@ -39,10 +49,27 @@ export default function CutBaseHome() {
     else setPosts(data || []);
   };
 
+  // 検索実行（Enterキーやボタン用）
+  const handleSearch = () => {
+    if (!searchQuery.trim()) {
+        setIsSearching(false);
+        fetchPosts(""); // 空で再検索して全件表示
+        return;
+    }
+    setIsSearching(true);
+    fetchPosts();
+  };
+
+  // 検索クリア
+  const clearSearch = () => {
+      setSearchQuery("");
+      setIsSearching(false);
+      fetchPosts("");
+  };
+
   const handlePost = async () => {
     if (inputText.trim() === "") return;
 
-    // 1. まずログインユーザーを取得
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -50,14 +77,13 @@ export default function CutBaseHome() {
         return;
     }
 
-    // 2. user_id をつけて保存
     const { error } = await supabase
       .from('posts')
       .insert([{ 
         content: inputText, 
         tag: selectedSoft, 
         likes: 0,
-        user_id: user.id // これで紐付け完了！
+        user_id: user.id
       }]);
 
     if (error) {
@@ -92,7 +118,7 @@ export default function CutBaseHome() {
 
         <nav className="space-y-4 flex-1">
           <Link href="/">
-            <NavItem icon={<Home size={20} />} label="Feed" active={!filterTag} />
+            <NavItem icon={<Home size={20} />} label="Feed" active={!filterTag && !isSearching} />
           </Link>
           <Link href="/match">
             <NavItem icon={<MessageSquare size={20} />} label="Match" />
@@ -123,14 +149,48 @@ export default function CutBaseHome() {
            </Link>
         </div>
 
-        {filterTag && (
-          <div className="flex justify-between items-center mb-4 bg-primary/10 p-3 rounded-lg border border-primary/20">
-            <span className="text-primary font-bold flex items-center gap-2"><Hash size={16}/> {filterTag}</span>
-            <button onClick={() => setFilterTag(null)} className="text-sm text-gray-400 hover:text-white flex items-center gap-1">
-              <X size={16}/> クリア
-            </button>
-          </div>
-        )}
+        {/* 🔍 検索バー & フィルター表示 */}
+        <div className="flex flex-col gap-4 mb-6">
+            {/* 検索バー */}
+            <div className="relative group">
+                <Search className="absolute left-3 top-3 text-gray-500 group-focus-within:text-primary transition" size={20} />
+                <input 
+                    type="text" 
+                    placeholder="キーワードで検索..." 
+                    className="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-10 pr-10 text-white focus:border-primary outline-none transition shadow-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                {searchQuery && (
+                    <button 
+                        onClick={clearSearch}
+                        className="absolute right-3 top-3 text-gray-500 hover:text-white"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
+            </div>
+
+            {/* フィルター状態の表示 */}
+            {(filterTag || isSearching) && (
+            <div className="flex flex-wrap gap-2 items-center bg-primary/10 p-3 rounded-lg border border-primary/20 animate-fade-in">
+                <span className="text-xs font-bold text-primary mr-2">絞り込み中:</span>
+                {filterTag && (
+                    <span className="text-white bg-primary/20 px-2 py-1 rounded text-xs flex items-center gap-1 border border-primary/20">
+                        <Hash size={12}/> {filterTag}
+                        <button onClick={() => setFilterTag(null)}><X size={12}/></button>
+                    </span>
+                )}
+                {isSearching && searchQuery && (
+                    <span className="text-white bg-primary/20 px-2 py-1 rounded text-xs flex items-center gap-1 border border-primary/20">
+                        <Search size={12}/> {searchQuery}
+                        <button onClick={clearSearch}><X size={12}/></button>
+                    </span>
+                )}
+            </div>
+            )}
+        </div>
         
         {/* 新規投稿エリア */}
         <div className="glass rounded-xl p-4 mb-8 shadow-xl">
@@ -176,14 +236,24 @@ export default function CutBaseHome() {
 
         {/* タイムライン */}
         <div className="space-y-6">
-            {posts.length === 0 && <p className="text-center text-gray-500">読み込み中...</p>}
+            {posts.length === 0 && (
+                <div className="text-center py-10 bg-white/5 rounded-xl border border-white/5">
+                    <p className="text-gray-400 mb-2">投稿が見つかりません</p>
+                    {(filterTag || isSearching) && (
+                        <button 
+                            onClick={() => { setFilterTag(null); clearSearch(); }}
+                            className="text-primary text-sm hover:underline"
+                        >
+                            フィルターを解除する
+                        </button>
+                    )}
+                </div>
+            )}
             
             {posts.map((post) => (
               <PostCard 
                 key={post.id} 
                 postId={post.id} 
-                // ここでプロフィール情報を渡します
-                // データがない場合（昔の投稿など）はGuest扱いにする
                 user={post.profiles?.name || "Guest User"}
                 avatarUrl={post.profiles?.avatar_url}
                 time={new Date(post.created_at).toLocaleString()}
@@ -240,7 +310,7 @@ function NavItem({ icon, label, active = false }: { icon: any, label: string, ac
   );
 }
 
-// 投稿カード（プロフィール表示対応版）
+// 投稿カード
 function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }: any) {
   const [likes, setLikes] = useState(initialLikes);
   const [isLiked, setIsLiked] = useState(false);
@@ -288,7 +358,6 @@ function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }:
   const handleSendComment = async () => {
     if (!commentText.trim()) return;
     
-    // コメントもログインユーザー名を反映させるため、ユーザー情報を取得
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     let userName = "Guest User";
     
@@ -323,7 +392,6 @@ function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }:
     <article className="glass rounded-xl p-5 mb-4 hover:border-primary/30 transition-all cursor-pointer group shadow-lg animate-fade-in">
         <div className="flex justify-between items-start mb-3">
             <div className="flex gap-3 items-center">
-                {/* アイコン表示部分：画像があれば表示、なければデフォルト */}
                 <div 
                     className="w-10 h-10 rounded-full bg-gray-700 border border-white/10 flex items-center justify-center text-xs text-white/50 overflow-hidden bg-cover bg-center"
                     style={{ backgroundImage: avatarUrl ? `url(${avatarUrl})` : 'none' }}
