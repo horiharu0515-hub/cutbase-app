@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-// Googleフォントを読み込み（日本語対応）
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
+// さっき作った門番を読み込み
+import AuthGuard from "./components/AuthGuard";
 
-// フォントの設定
 const notoSansJP = Noto_Sans_JP({ 
   subsets: ["latin"],
-  weight: ["400", "700"], // 通常と太字
+  weight: ["400", "700"],
   preload: false,
 });
 
@@ -23,7 +23,10 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={notoSansJP.className}>
-        {children}
+        {/* アプリ全体を門番で包む */}
+        <AuthGuard>
+          {children}
+        </AuthGuard>
       </body>
     </html>
   );
