@@ -116,7 +116,7 @@ export default function MatchPage() {
         {/* モーダル: 募集フォーム */}
         {showForm && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-surface p-6 rounded-xl w-full max-w-md border border-white/10 shadow-2xl glass animate-fade-in">
+            <div className="bg-surface p-6 rounded-xl w-full max-w-md border border-white/10 shadow-2xl glass animate-fade-in max-h-[85vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-white">案件を募集する</h3>
                 <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-white"><X size={24} /></button>
@@ -137,7 +137,6 @@ export default function MatchPage() {
                     <option>After Effects</option>
                     <option>DaVinci Resolve</option>
                     <option>Final Cut Pro</option>
-                    {/* その他を追加 */}
                     <option value="Other">その他</option>
                   </select>
                   <input 
@@ -165,15 +164,17 @@ export default function MatchPage() {
           </div>
         )}
 
-        {/* モーダル: 詳細表示 & 応募 */}
+        {/* モーダル: 詳細表示 & 応募 (修正済み: スマホ対応) */}
         {selectedJob && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
-            <div className="bg-[#151921] w-full max-w-lg md:rounded-2xl rounded-t-2xl border-t md:border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* スマホでは高さを85vhに制限し、はみ出さないようにする */}
+            <div className="bg-[#151921] w-full max-w-lg md:rounded-2xl rounded-t-2xl border-t md:border border-white/10 shadow-2xl overflow-hidden flex flex-col h-[85vh] md:h-auto md:max-h-[90vh]">
               
+              {/* ヘッダー画像 */}
               <div className="h-32 bg-gradient-to-r from-blue-900 to-slate-900 relative flex-shrink-0">
                   <button 
                     onClick={() => setSelectedJob(null)} 
-                    className="absolute top-4 right-4 bg-black/30 p-2 rounded-full text-white hover:bg-black/50 transition"
+                    className="absolute top-4 right-4 bg-black/30 p-2 rounded-full text-white hover:bg-black/50 transition z-10"
                   >
                     <X size={20} />
                   </button>
@@ -184,7 +185,8 @@ export default function MatchPage() {
                   </div>
               </div>
 
-              <div className="p-6 pt-10 overflow-y-auto flex-1">
+              {/* 中身（スクロール可能エリア） */}
+              <div className="p-6 pt-10 overflow-y-auto flex-1 pb-4">
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded border border-primary/20">
                       {selectedJob.soft === 'Other' ? 'その他' : selectedJob.soft}
                   </span>
@@ -216,7 +218,8 @@ export default function MatchPage() {
                   </div>
               </div>
 
-              <div className="p-4 border-t border-white/10 bg-black/20 flex-shrink-0">
+              {/* フッターアクション (最下部に固定) */}
+              <div className="p-4 border-t border-white/10 bg-black/20 flex-shrink-0 pb-safe md:pb-4">
                   <button 
                     onClick={handleApply}
                     disabled={isApplied}

@@ -49,8 +49,14 @@ export default function ProfilePage() {
     if (data) {
       setProfile(data);
     } else {
-        const newProfile = { id: user.id, name: 'Guest', bio: '' };
-        await supabase.from('profiles').insert([newProfile]);
+        // データがない場合は初期値
+        const newProfile = { 
+            id: user.id, 
+            name: user.email?.split('@')[0] || 'Guest', 
+            bio: 'よろしくお願いします！',
+            soft: 'Premiere Pro',
+            level: 'Beginner'
+        };
         setProfile(newProfile as any);
     }
     setLoading(false);
@@ -63,38 +69,50 @@ export default function ProfilePage() {
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${type}s/${currentUser.id}/${fileName}`;
 
+    // アップロード
     const { error: uploadError } = await supabase.storage
       .from('images')
       .upload(filePath, file);
 
     if (uploadError) {
-      alert("アップロード失敗: 画像サイズが大きいか、通信エラーです");
+      alert("アップロードに失敗しました。SQLを実行したか確認してください。");
       console.error(uploadError);
       return;
     }
 
+    // 公開URL取得
     const { data: { publicUrl } } = supabase.storage
       .from('images')
       .getPublicUrl(filePath);
 
+    // 画面とDBを更新
     const updateData = type === 'avatar' ? { avatar_url: publicUrl } : { header_url: publicUrl };
-    setProfile({ ...profile, ...updateData });
-    await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
+    const newProfile = { ...profile, ...updateData };
+    setProfile(newProfile);
+    
+    // 即時保存（upsertを使用）
+    await supabase.from('profiles').upsert(newProfile);
   };
 
   const handleSave = async () => {
+    // upsert: なければ作成、あれば更新。最強の保存メソッド
     const { error } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: currentUser.id,
         name: profile.name,
         bio: profile.bio,
         soft: profile.soft,
         level: profile.level,
-      })
-      .eq('id', currentUser.id);
+        avatar_url: profile.avatar_url,
+        header_url: profile.header_url
+      });
 
-    if (!error) {
-        alert("プロフィールを更新しました！");
+    if (error) {
+        alert("保存に失敗しました...");
+        console.error(error);
+    } else {
+        alert("プロフィールを保存しました！");
         setIsEditing(false);
     }
   };
@@ -136,6 +154,7 @@ export default function ProfilePage() {
       {/* メインエリア */}
       <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24">
         
+        {/* スマホヘッダー */}
         <div className="md:hidden flex items-center justify-center mb-6">
            <Link href="/" className="flex items-center gap-2">
               <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2 rounded-lg">
@@ -151,16 +170,14 @@ export default function ProfilePage() {
             {/* ヘッダー画像 */}
             <div 
                 className="absolute top-0 left-0 w-full h-40 bg-gradient-to-r from-blue-900 to-slate-900 bg-cover bg-center"
-                style={{ backgroundImage: `url(${profile.header_url})` }}
+                style={{ backgroundImage: profile.header_url ? `url(${profile.header_url})` : undefined }}
             >
-                {/* ヘッダー編集ボタン（常時表示、半透明） */}
                 <label className="absolute right-4 bottom-4 bg-black/40 backdrop-blur-sm text-white p-2 rounded-full cursor-pointer hover:bg-black/70 transition border border-white/10">
                     <Camera size={20} />
                     <input type="file" className="hidden" accept="image/*" onChange={(e) => uploadImage(e, 'header')} />
                 </label>
             </div>
             
-            {/* ログアウト */}
             <div className="absolute top-4 right-4 z-10">
                 <button onClick={handleLogout} className="bg-black/30 hover:bg-red-500/20 text-white hover:text-red-400 p-2 rounded-lg transition flex items-center gap-2 text-xs font-bold border border-white/10 backdrop-blur-md">
                     <LogOut size={16} /> ログアウト
@@ -172,7 +189,7 @@ export default function ProfilePage() {
                 <div className="relative">
                     <div 
                         className="w-32 h-32 rounded-full border-4 border-surface bg-gray-700 shadow-xl flex-shrink-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${profile.avatar_url})` }}
+                        style={{ backgroundImage: profile.avatar_url ? `url(${profile.avatar_url})` : undefined }}
                     ></div>
                     <label className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full cursor-pointer hover:bg-accent transition border-2 border-surface shadow-lg">
                         <Camera size={16} />
@@ -194,7 +211,6 @@ export default function ProfilePage() {
                                     <option>After Effects</option>
                                     <option>DaVinci Resolve</option>
                                     <option>Final Cut Pro</option>
-                                    {/* その他を追加 */}
                                     <option value="Other">その他</option>
                                 </select>
                                 <select className="bg-black/30 border border-white/20 rounded p-2 text-sm"
@@ -232,14 +248,12 @@ export default function ProfilePage() {
             </div>
         </div>
 
-        {/* 統計データ & フォローボタンエリア */}
         <div className="grid grid-cols-3 gap-4 mb-8">
             <StatCard label="Posts" value={String(stats.posts)} />
             <StatCard label="Followers" value={String(stats.followers)} />
             <StatCard label="Following" value={String(stats.following)} />
         </div>
 
-        {/* ポートフォリオ */}
         <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
             <Film size={20} className="text-primary" /> Portfolio
         </h3>
