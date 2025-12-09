@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // パスワード表示切替
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -22,18 +22,16 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        // 新規登録
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
         if (error) throw error;
         
-        // プロフィール情報の初期作成（auth.usersのIDと紐付け）
         if (data.user) {
             const { error: profileError } = await supabase.from('profiles').insert([
                 { 
-                  id: data.user.id, // ここで紐付け！
+                  id: data.user.id,
                   name: 'New User', 
                   bio: 'よろしくお願いします！' 
                 }
@@ -43,7 +41,6 @@ export default function LoginPage() {
         setMessage("登録完了！自動的にログインします...");
         router.push("/");
       } else {
-        // ログイン
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -103,7 +100,7 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
               <input 
-                type={showPassword ? "text" : "password"} // ここで切り替え
+                type={showPassword ? "text" : "password"} 
                 required
                 minLength={6}
                 className="w-full bg-black/30 border border-white/10 rounded-xl py-3 pl-10 pr-12 text-white focus:border-primary outline-none transition"
@@ -111,7 +108,6 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              {/* パスワード表示ボタン */}
               <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
