@@ -164,12 +164,13 @@ export default function MatchPage() {
           </div>
         )}
 
-        {/* モーダル: 詳細表示 & 応募 (z-indexを100にして最前面へ！) */}
+        {/* モーダル: 詳細表示 & 応募 */}
         {selectedJob && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
-            {/* 高さを少し控えめにしてボタンが隠れないように調整 */}
+            {/* PCでは max-w-lg と h-auto を適用して中央配置 */}
             <div className="bg-[#151921] w-full max-w-lg md:rounded-2xl rounded-t-2xl border-t md:border border-white/10 shadow-2xl overflow-hidden flex flex-col h-[80vh] md:h-auto md:max-h-[90vh]">
               
+              {/* ヘッダー画像 */}
               <div className="h-32 bg-gradient-to-r from-blue-900 to-slate-900 relative flex-shrink-0">
                   <button 
                     onClick={() => setSelectedJob(null)} 
@@ -184,7 +185,8 @@ export default function MatchPage() {
                   </div>
               </div>
 
-              <div className="p-6 pt-10 overflow-y-auto flex-1 pb-20">
+              {/* 中身 */}
+              <div className="p-6 pt-10 overflow-y-auto flex-1 pb-20 md:pb-6">
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded border border-primary/20">
                       {selectedJob.soft === 'Other' ? 'その他' : selectedJob.soft}
                   </span>
@@ -216,8 +218,8 @@ export default function MatchPage() {
                   </div>
               </div>
 
-              {/* フッターアクション (位置調整) */}
-              <div className="p-4 border-t border-white/10 bg-black/40 backdrop-blur-lg flex-shrink-0 absolute bottom-0 w-full">
+              {/* フッターアクション（スマホでは絶対配置、PCでは通常配置） */}
+              <div className="p-4 border-t border-white/10 bg-black/40 backdrop-blur-lg flex-shrink-0 absolute bottom-0 w-full md:static md:w-auto">
                   <button 
                     onClick={handleApply}
                     disabled={isApplied}
@@ -324,7 +326,8 @@ export default function MatchPage() {
 function NavItem({ icon, label, active = false }: { icon: any, label: string, active?: boolean }) {
   return (
     <div className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-300 ${active ? 'bg-primary/10 text-primary translate-x-2' : 'hover:bg-white/5 text-gray-400 hover:text-white hover:translate-x-1'}`}>
-      {icon} <span className="font-medium">{label}</span>
+      {icon}
+      <span className="font-medium">{label}</span>
     </div>
   );
 }

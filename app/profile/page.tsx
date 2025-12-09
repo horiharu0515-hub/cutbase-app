@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Home, User, MessageSquare, PlusCircle, Edit3, Save, X, Film, Scissors, LogOut, Camera, Users } from "lucide-react";
+import { Home, User, MessageSquare, PlusCircle, Edit3, Save, X, Film, Scissors, LogOut, Camera, Users, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
@@ -33,14 +33,18 @@ export default function ProfilePage() {
   }, []);
 
   const getProfile = async () => {
+    // 1. ユーザー情報を取得
     const { data: { user } } = await supabase.auth.getUser();
+    
+    // ログインしていなければログイン画面へ
     if (!user) {
         router.push('/login');
         return;
     }
     setCurrentUser(user);
 
-    // 自分のプロフィールを確実に取得
+    // 2. データベースからプロフィールを取得
+    // 重要：この処理が終わるまで画面を描画させない（Loadingのままにする）
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -48,26 +52,24 @@ export default function ProfilePage() {
       .single();
 
     if (data) {
+      // データがあればそれをセット
       setProfile(data);
     } else {
-        // データがない場合（初回ログインなど）は、作成を試みる
-        // ただし、既に存在する場合のエラー(PGRST116)以外はアラートを出す
-        if (error && error.code !== 'PGRST116') {
-            console.error("プロフィール取得エラー:", error);
-        } else {
-            const newProfile = { 
-                id: user.id, 
-                name: user.email?.split('@')[0] || 'No Name', 
-                bio: 'よろしくお願いします！',
-                soft: 'Premiere Pro',
-                level: 'Beginner'
-            };
-            // 画面上だけ反映（保存はユーザーがボタンを押した時か、自動作成）
-            setProfile(newProfile as any);
-            // 念のため裏で作成しておく
-            await supabase.from('profiles').insert([newProfile]);
-        }
+        // データがない（初回）場合は、IDを使って新規作成
+        const newProfile = { 
+            id: user.id, 
+            name: user.email?.split('@')[0] || 'No Name', 
+            bio: 'よろしくお願いします！',
+            soft: 'Premiere Pro',
+            level: 'Beginner'
+        };
+        
+        // 画面にセットしてから、裏で保存
+        setProfile(newProfile as any);
+        await supabase.from('profiles').insert([newProfile]);
     }
+    
+    // 全ての処理が終わったらローディング解除
     setLoading(false);
   };
 
@@ -91,16 +93,14 @@ export default function ProfilePage() {
       .from('images')
       .getPublicUrl(filePath);
 
-    // 画像URLを更新
     const updateData = type === 'avatar' ? { avatar_url: publicUrl } : { header_url: publicUrl };
     const newProfile = { ...profile, ...updateData };
     
     setProfile(newProfile);
     
-    // DBに即時保存
     await supabase.from('profiles').upsert({
         ...newProfile,
-        id: currentUser.id // IDを確実に指定
+        id: currentUser.id
     });
   };
 
@@ -108,7 +108,7 @@ export default function ProfilePage() {
     const { error } = await supabase
       .from('profiles')
       .upsert({
-        id: currentUser.id, // IDを確実に指定
+        id: currentUser.id,
         name: profile.name,
         bio: profile.bio,
         soft: profile.soft,
@@ -123,11 +123,6 @@ export default function ProfilePage() {
     } else {
         alert("保存エラー: " + error.message);
     }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
   };
 
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center text-white">Loading...</div>;
@@ -184,10 +179,13 @@ export default function ProfilePage() {
                 </label>
             </div>
             
-            <div className="absolute top-4 right-4 z-10">
-                <button onClick={handleLogout} className="bg-black/30 hover:bg-red-500/20 text-white hover:text-red-400 p-2 rounded-lg transition flex items-center gap-2 text-xs font-bold border border-white/10 backdrop-blur-md">
-                    <LogOut size={16} /> ログアウト
-                </button>
+            {/* 設定・ログアウトボタン */}
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <Link href="/settings">
+                    <button className="bg-black/30 hover:bg-white/20 text-white p-2 rounded-lg transition flex items-center gap-2 text-xs font-bold border border-white/10 backdrop-blur-md">
+                        <Settings size={16} /> 設定
+                    </button>
+                </Link>
             </div>
             
             <div className="relative pt-20 px-8 pb-8 flex flex-col md:flex-row items-end md:items-center gap-6 mt-10">
