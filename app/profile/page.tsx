@@ -40,6 +40,7 @@ export default function ProfilePage() {
     }
     setCurrentUser(user);
 
+    // 自分のプロフィールを確実に取得
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -49,15 +50,23 @@ export default function ProfilePage() {
     if (data) {
       setProfile(data);
     } else {
-        // データがない場合は初期値
-        const newProfile = { 
-            id: user.id, 
-            name: user.email?.split('@')[0] || 'Guest', 
-            bio: 'よろしくお願いします！',
-            soft: 'Premiere Pro',
-            level: 'Beginner'
-        };
-        setProfile(newProfile as any);
+        // データがない場合（初回ログインなど）は、作成を試みる
+        // ただし、既に存在する場合のエラー(PGRST116)以外はアラートを出す
+        if (error && error.code !== 'PGRST116') {
+            console.error("プロフィール取得エラー:", error);
+        } else {
+            const newProfile = { 
+                id: user.id, 
+                name: user.email?.split('@')[0] || 'No Name', 
+                bio: 'よろしくお願いします！',
+                soft: 'Premiere Pro',
+                level: 'Beginner'
+            };
+            // 画面上だけ反映（保存はユーザーがボタンを押した時か、自動作成）
+            setProfile(newProfile as any);
+            // 念のため裏で作成しておく
+            await supabase.from('profiles').insert([newProfile]);
+        }
     }
     setLoading(false);
   };
@@ -69,37 +78,37 @@ export default function ProfilePage() {
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${type}s/${currentUser.id}/${fileName}`;
 
-    // アップロード
     const { error: uploadError } = await supabase.storage
       .from('images')
       .upload(filePath, file);
 
     if (uploadError) {
-      alert("アップロードに失敗しました。SQLを実行したか確認してください。");
-      console.error(uploadError);
+      alert("アップロード失敗: " + uploadError.message);
       return;
     }
 
-    // 公開URL取得
     const { data: { publicUrl } } = supabase.storage
       .from('images')
       .getPublicUrl(filePath);
 
-    // 画面とDBを更新
+    // 画像URLを更新
     const updateData = type === 'avatar' ? { avatar_url: publicUrl } : { header_url: publicUrl };
     const newProfile = { ...profile, ...updateData };
+    
     setProfile(newProfile);
     
-    // 即時保存（upsertを使用）
-    await supabase.from('profiles').upsert(newProfile);
+    // DBに即時保存
+    await supabase.from('profiles').upsert({
+        ...newProfile,
+        id: currentUser.id // IDを確実に指定
+    });
   };
 
   const handleSave = async () => {
-    // upsert: なければ作成、あれば更新。最強の保存メソッド
     const { error } = await supabase
       .from('profiles')
       .upsert({
-        id: currentUser.id,
+        id: currentUser.id, // IDを確実に指定
         name: profile.name,
         bio: profile.bio,
         soft: profile.soft,
@@ -108,12 +117,11 @@ export default function ProfilePage() {
         header_url: profile.header_url
       });
 
-    if (error) {
-        alert("保存に失敗しました...");
-        console.error(error);
-    } else {
-        alert("プロフィールを保存しました！");
+    if (!error) {
+        alert("プロフィールを更新しました！");
         setIsEditing(false);
+    } else {
+        alert("保存エラー: " + error.message);
     }
   };
 
@@ -154,7 +162,6 @@ export default function ProfilePage() {
       {/* メインエリア */}
       <main className="flex-1 md:ml-64 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24">
         
-        {/* スマホヘッダー */}
         <div className="md:hidden flex items-center justify-center mb-6">
            <Link href="/" className="flex items-center gap-2">
               <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2 rounded-lg">
@@ -167,7 +174,6 @@ export default function ProfilePage() {
         {/* プロフィールヘッダー */}
         <div className="glass rounded-2xl border border-white/10 relative overflow-hidden mb-8 shadow-2xl animate-fade-in group">
             
-            {/* ヘッダー画像 */}
             <div 
                 className="absolute top-0 left-0 w-full h-40 bg-gradient-to-r from-blue-900 to-slate-900 bg-cover bg-center"
                 style={{ backgroundImage: profile.header_url ? `url(${profile.header_url})` : undefined }}
@@ -185,7 +191,6 @@ export default function ProfilePage() {
             </div>
             
             <div className="relative pt-20 px-8 pb-8 flex flex-col md:flex-row items-end md:items-center gap-6 mt-10">
-                {/* アイコン画像 */}
                 <div className="relative">
                     <div 
                         className="w-32 h-32 rounded-full border-4 border-surface bg-gray-700 shadow-xl flex-shrink-0 bg-cover bg-center"

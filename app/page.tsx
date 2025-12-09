@@ -5,6 +5,25 @@ import Link from "next/link";
 import { supabase } from "../lib/supabase"; 
 import { Home, User, MessageSquare, PlusCircle, Heart, Share2, Search, ChevronDown, Send, Scissors, X, Hash } from "lucide-react";
 
+// 日時を「〇〇前」に変換する関数
+function timeAgo(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + "年前";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + "ヶ月前";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + "日前";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + "時間前";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + "分前";
+  return "たった今";
+}
+
 export default function CutBaseHome() {
   const [inputText, setInputText] = useState("");
   const [selectedSoft, setSelectedSoft] = useState("Premiere Pro");
@@ -250,7 +269,7 @@ export default function CutBaseHome() {
                 postId={post.id} 
                 user={post.profiles?.name || "Guest User"}
                 avatarUrl={post.profiles?.avatar_url}
-                time={new Date(post.created_at).toLocaleString()}
+                time={timeAgo(post.created_at)} // 日時フォーマットを適用
                 tag={post.tag} 
                 content={post.content}
                 initialLikes={post.likes || 0}
@@ -327,7 +346,7 @@ function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }:
     const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
     let newLikes = likes;
 
-    // 1. 最新のいいね数を取得（これが「蓄積」のポイント！）
+    // 1. 最新のいいね数を取得
     const { data: currentPost } = await supabase
       .from('posts')
       .select('likes')
