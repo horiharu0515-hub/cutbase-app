@@ -33,18 +33,13 @@ export default function ProfilePage() {
   }, []);
 
   const getProfile = async () => {
-    // 1. ユーザー情報を取得
     const { data: { user } } = await supabase.auth.getUser();
-    
-    // ログインしていなければログイン画面へ
     if (!user) {
         router.push('/login');
         return;
     }
     setCurrentUser(user);
 
-    // 2. データベースからプロフィールを取得
-    // 重要：この処理が終わるまで画面を描画させない（Loadingのままにする）
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -52,24 +47,22 @@ export default function ProfilePage() {
       .single();
 
     if (data) {
-      // データがあればそれをセット
       setProfile(data);
     } else {
-        // データがない（初回）場合は、IDを使って新規作成
-        const newProfile = { 
-            id: user.id, 
-            name: user.email?.split('@')[0] || 'No Name', 
-            bio: 'よろしくお願いします！',
-            soft: 'Premiere Pro',
-            level: 'Beginner'
-        };
-        
-        // 画面にセットしてから、裏で保存
-        setProfile(newProfile as any);
-        await supabase.from('profiles').insert([newProfile]);
+        if (error && error.code !== 'PGRST116') {
+            console.error("プロフィール取得エラー:", error);
+        } else {
+            const newProfile = { 
+                id: user.id, 
+                name: user.email?.split('@')[0] || 'No Name', 
+                bio: 'よろしくお願いします！',
+                soft: 'Premiere Pro',
+                level: 'Beginner'
+            };
+            setProfile(newProfile as any);
+            await supabase.from('profiles').insert([newProfile]);
+        }
     }
-    
-    // 全ての処理が終わったらローディング解除
     setLoading(false);
   };
 
@@ -123,6 +116,11 @@ export default function ProfilePage() {
     } else {
         alert("保存エラー: " + error.message);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
   };
 
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center text-white">Loading...</div>;
@@ -179,7 +177,6 @@ export default function ProfilePage() {
                 </label>
             </div>
             
-            {/* 設定・ログアウトボタン */}
             <div className="absolute top-4 right-4 z-10 flex gap-2">
                 <Link href="/settings">
                     <button className="bg-black/30 hover:bg-white/20 text-white p-2 rounded-lg transition flex items-center gap-2 text-xs font-bold border border-white/10 backdrop-blur-md">
