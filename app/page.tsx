@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link"; 
 import { supabase } from "../lib/supabase"; 
-import { Home, User, MessageSquare, PlusCircle, Heart, Share2, Search, ChevronDown, Send, Scissors, X, Hash } from "lucide-react";
+import { Home, User, MessageSquare, PlusCircle, Heart, Share2, Search, ChevronDown, Send, Scissors, X, Hash, Trash2 } from "lucide-react";
 
 // 日時を「〇〇前」に変換する関数
 function timeAgo(dateString: string) {
@@ -32,14 +32,22 @@ export default function CutBaseHome() {
   const [searchQuery, setSearchQuery] = useState(""); 
   const [isSearching, setIsSearching] = useState(false); 
   const inputRef = useRef<HTMLInputElement>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null); // 自分のID
 
   useEffect(() => {
     fetchPosts();
+    checkUser();
   }, [filterTag]); 
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) setCurrentUserId(user.id);
+  };
 
   const fetchPosts = async (manualSearchTerm?: string) => {
     const term = manualSearchTerm !== undefined ? manualSearchTerm : searchQuery;
 
+    // プロフィール情報も一緒に取得
     let query = supabase
       .from('posts')
       .select(`
@@ -111,6 +119,19 @@ export default function CutBaseHome() {
       setInputText(""); 
       fetchPosts(); 
     }
+  };
+
+  // 投稿削除機能
+  const handleDelete = async (postId: number) => {
+      if(!confirm("本当にこの投稿を削除しますか？")) return;
+      
+      const { error } = await supabase.from('posts').delete().eq('id', postId);
+      
+      if(error) {
+          alert("削除に失敗しました: " + error.message);
+      } else {
+          fetchPosts(); // リストを更新
+      }
   };
 
   const handleFocusInput = () => {
@@ -229,7 +250,6 @@ export default function CutBaseHome() {
                                 <option value="Final Cut Pro">Final Cut Pro</option>
                                 <option value="DaVinci Resolve">DaVinci Resolve</option>
                                 <option value="After Effects">After Effects</option>
-                                {/* その他を追加 */}
                                 <option value="Other">その他</option>
                               </select>
                               <ChevronDown size={14} className="absolute right-2 top-2.5 text-gray-500 pointer-events-none" />
@@ -268,17 +288,20 @@ export default function CutBaseHome() {
                 key={post.id} 
                 postId={post.id} 
                 user={post.profiles?.name || "Guest User"}
+                userId={post.user_id} // 投稿者ID
+                currentUserId={currentUserId} // 自分のID
                 avatarUrl={post.profiles?.avatar_url}
-                time={timeAgo(post.created_at)} // 日時フォーマットを適用
+                time={timeAgo(post.created_at || new Date().toISOString())}
                 tag={post.tag} 
                 content={post.content}
                 initialLikes={post.likes || 0}
+                onDelete={() => handleDelete(post.id)} // 削除処理を渡す
               />
             ))}
         </div>
       </main>
 
-      {/* 右サイドバー (PC) */}
+      {/* 右サイドバー */}
       <aside className="w-80 fixed right-0 top-0 h-full border-l border-white/5 p-6 hidden xl:block bg-background/50 backdrop-blur-md">
         <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider text-gray-500">Trending Tags</h3>
         <div className="flex flex-wrap gap-2 mb-8">
@@ -294,7 +317,6 @@ export default function CutBaseHome() {
         </div>
       </aside>
 
-      {/* 📱 スマホ用ボトムナビ */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-background/90 backdrop-blur-xl border-t border-white/10 flex justify-around p-4 z-50 pb-safe">
           <Link href="/" className="flex flex-col items-center gap-1 text-primary">
             <Home size={24} />
@@ -323,14 +345,14 @@ function NavItem({ icon, label, active = false }: { icon: any, label: string, ac
   );
 }
 
-// 投稿カード（いいね蓄積＆その他タグ対応）
-function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }: any) {
+// 投稿カード（削除ボタン付き）
+function PostCard({ postId, user, userId, currentUserId, avatarUrl, time, tag, content, initialLikes, onDelete }: any) {
   const [likes, setLikes] = useState(initialLikes);
   const [isLiked, setIsLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState("");
-  const [isLikeProcessing, setIsLikeProcessing] = useState(false); // 連打防止
+  const [isLikeProcessing, setIsLikeProcessing] = useState(false);
 
   useEffect(() => {
     const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
@@ -340,13 +362,13 @@ function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }:
   }, [postId]);
 
   const handleLike = async () => {
-    if (isLikeProcessing) return; // 処理中は無視
+    if (isLikeProcessing) return;
     setIsLikeProcessing(true);
 
     const likedPosts = JSON.parse(localStorage.getItem('liked_posts') || '[]');
     let newLikes = likes;
 
-    // 1. 最新のいいね数を取得
+    // 最新のいいね数を取得
     const { data: currentPost } = await supabase
       .from('posts')
       .select('likes')
@@ -358,25 +380,20 @@ function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }:
     }
 
     if (likedPosts.includes(postId)) {
-      // --- いいね解除（取り消し） ---
+      // いいね解除
       newLikes = Math.max(0, newLikes - 1);
       setLikes(newLikes);
       setIsLiked(false);
-      
       const newLikedPosts = likedPosts.filter((id: number) => id !== postId);
       localStorage.setItem('liked_posts', JSON.stringify(newLikedPosts));
-      
       await supabase.from('posts').update({ likes: newLikes }).eq('id', postId);
-
     } else {
-      // --- いいね追加 ---
+      // いいね追加
       newLikes = newLikes + 1;
       setLikes(newLikes);
       setIsLiked(true);
-      
       likedPosts.push(postId);
       localStorage.setItem('liked_posts', JSON.stringify(likedPosts));
-      
       await supabase.from('posts').update({ likes: newLikes }).eq('id', postId);
     }
 
@@ -428,15 +445,27 @@ function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }:
       case "Final Cut Pro": return "text-yellow-400 border-yellow-500/20 bg-yellow-500/10";
       case "DaVinci Resolve": return "text-pink-400 border-pink-500/20 bg-pink-500/10";
       case "After Effects": return "text-purple-400 border-purple-500/20 bg-purple-500/10";
-      case "Other": return "text-gray-300 border-gray-500/20 bg-gray-500/20"; // その他用カラー
+      case "Other": return "text-gray-300 border-gray-500/20 bg-gray-500/20";
       default: return "text-gray-400 border-gray-500/20 bg-gray-500/10";
     }
   };
 
   return (
-    <article className="glass rounded-xl p-5 mb-4 hover:border-primary/30 transition-all cursor-pointer group shadow-lg animate-fade-in">
+    <article className="glass rounded-xl p-5 mb-4 hover:border-primary/30 transition-all cursor-pointer group shadow-lg animate-fade-in relative">
+        
+        {/* 削除ボタン: 自分の投稿のみ表示 */}
+        {currentUserId === userId && (
+            <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(); }} 
+                className="absolute top-4 right-4 text-gray-600 hover:text-red-400 transition bg-black/20 p-2 rounded-full"
+                title="削除する"
+            >
+                <Trash2 size={16} />
+            </button>
+        )}
+
         <div className="flex justify-between items-start mb-3">
-            <div className="flex gap-3 items-center">
+            <Link href={`/profile?id=${userId}`} className="flex gap-3 items-center group/user">
                 <div 
                     className="w-10 h-10 rounded-full bg-gray-700 border border-white/10 flex items-center justify-center text-xs text-white/50 overflow-hidden bg-cover bg-center"
                     style={{ backgroundImage: avatarUrl ? `url(${avatarUrl})` : 'none' }}
@@ -444,11 +473,11 @@ function PostCard({ postId, user, avatarUrl, time, tag, content, initialLikes }:
                     {!avatarUrl && user.charAt(0)}
                 </div>
                 <div>
-                    <h3 className="font-bold text-sm text-white">{user}</h3>
+                    <h3 className="font-bold text-sm text-white group-hover/user:text-primary transition">{user}</h3>
                     <p className="text-xs text-gray-500">{time}</p>
                 </div>
-            </div>
-            <span className={`text-xs px-2 py-1 rounded border ${getTagColor(tag)}`}>{tag === 'Other' ? 'その他' : tag}</span>
+            </Link>
+            <span className={`text-xs px-2 py-1 rounded border ${getTagColor(tag)} mr-8`}>{tag === 'Other' ? 'その他' : tag}</span>
         </div>
         
         <h2 className="text-white text-base leading-relaxed mb-4 whitespace-pre-wrap">{content}</h2>
